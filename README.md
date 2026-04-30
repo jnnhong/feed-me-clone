@@ -1,12 +1,15 @@
-# Harness Engineering Template
+# FeedMe
 
-Next.js 16 + React 19 프로젝트 템플릿
+웹 페이지 URL을 Markdown으로 변환해 LLM에 바로 넘길 수 있는 단일 페이지 도구.
+
+URL 하나로 본문을 추출하고, 복사·다운로드·ChatGPT·Claude 열기로 내보냅니다.
 
 ## 기술 스택
 
 - **Framework**: Next.js 16 (App Router)
 - **UI**: React 19, Tailwind CSS 4, shadcn/ui, Radix UI, Base UI
-- **Icons**: Lucide React
+- **Icons**: Lucide React, Tabler Icons
+- **Theme**: next-themes (시스템 다크모드 자동 적용)
 - **Testing**: Vitest, Testing Library, Playwright
 - **Lint**: ESLint
 - **Package Manager**: Bun
@@ -37,6 +40,42 @@ bunx playwright install chromium
 | `bun run test` | Vitest 실행 |
 | `bun run test:watch` | Vitest 워치 모드 |
 | `bun run test:e2e` | Playwright E2E 실행 |
+
+## 주요 기능
+
+- **URL → Markdown 변환**: 웹 페이지 본문을 서버에서 추출 (`POST /api/convert`)
+- **내보내기**: 복사하기, `.md` 다운로드, ChatGPT / Claude 새 탭으로 열기
+- **프롬프트 선택**: 요약·번역·쉽게 설명 프리셋 3개 + 직접 입력
+- **에러 처리**: 유효하지 않은 URL / 접근 불가 / 본문 추출 실패 원인별 메시지
+- **다크모드**: OS/브라우저 시스템 설정 자동 적용 (인앱 토글 없음)
+
+## 아키텍처
+
+```
+app/
+  page.tsx               # 루트 단일 페이지
+  layout.tsx             # ThemeProvider (시스템 다크모드)
+  api/convert/route.ts   # POST — URL → Markdown 변환 API
+
+components/url-to-md/
+  URLInput.tsx           # URL 입력창 + 지우기 버튼
+  MarkdownResult.tsx     # 변환 결과 렌더링
+  ExportButtons.tsx      # 복사하기 / .md 다운로드
+  PromptSelector.tsx     # 프롬프트 칩 선택
+  LLMOpenDropdown.tsx    # ChatGPT / Claude 열기 드롭다운
+
+hooks/
+  useUrlConversion.ts    # 변환 상태 관리
+
+lib/
+  url-validation.ts      # URL 유효성 검사
+  llm-url.ts             # ChatGPT / Claude URL 생성
+
+types/
+  url-to-md.ts           # ConversionResult, ConversionError, PromptOption
+```
+
+의존성 방향: `types → config → lib → services → hooks → components → app`
 
 ## Hooks
 
