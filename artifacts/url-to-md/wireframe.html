@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe: url-to-md</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --w-bg: #f5f5f5;
+    --w-border: #ccc;
+    --w-text: #555;
+    --w-muted: #aaa;
+    --w-fill: #eee;
+  }
+  * { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; color: var(--w-text); box-sizing: border-box; }
+  body { background: var(--w-bg); margin: 0; padding: 0; }
+
+  nav { position: sticky; top: 0; z-index: 40; background: var(--w-bg); border-bottom: 1px solid var(--w-border); }
+  nav button { cursor: pointer; font-size: 13px; background: none; border: none; }
+  nav button:hover { background: var(--w-fill); border-radius: 4px; }
+  nav button.active { font-weight: bold; border-bottom: 2px solid var(--w-text); }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .vp-toggle button { font-size: 12px; padding: 2px 8px; border: 1px solid var(--w-border); cursor: pointer; background: white; }
+  .vp-toggle button:first-child { border-radius: 4px 0 0 4px; }
+  .vp-toggle button:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+  .vp-toggle button.active { background: var(--w-text); color: white; }
+
+  body.viewport-mobile .screen-content {
+    max-width: 375px !important;
+    margin: 24px auto !important;
+    border: 2px solid var(--w-border);
+    border-radius: 24px;
+    min-height: 667px;
+    background: white;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 32px 16px !important;
+  }
+
+  .screen-notes { background: #fffde7; border-left: 3px solid #ffd54f; padding: 12px 16px; margin-top: 24px; font-size: 13px; border-radius: 0 4px 4px 0; }
+  .screen-notes summary { cursor: pointer; font-weight: bold; font-size: 12px; color: #b0a050; text-transform: uppercase; letter-spacing: 0.05em; }
+  .screen-notes p { margin: 6px 0 2px; color: #777; }
+  .screen-notes ul { margin: 4px 0 0 16px; padding: 0; color: #777; }
+  .screen-notes li { margin: 2px 0; }
+
+  /* Wireframe UI primitives */
+  .w-input { border: 1px solid var(--w-border); background: white; padding: 12px 18px; border-radius: 6px; font-size: 20px; width: 100%; outline: none; }
+  .w-input.error { border-color: #c55; }
+  .w-btn { border: 1px solid var(--w-border); background: var(--w-fill); padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .w-btn-primary { border: 1px solid var(--w-text); background: var(--w-text); padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: white; }
+  .w-btn-primary * { color: white !important; }
+  .w-btn-icon { border: 1px solid var(--w-border); background: var(--w-fill); padding: 6px 8px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; }
+  .w-chip { border: 1px solid var(--w-border); background: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; display: inline-block; }
+  .w-chip.selected { border-color: var(--w-text); background: var(--w-fill); font-weight: bold; }
+  .w-card { background: white; border: 1px solid var(--w-border); border-radius: 8px; }
+  .w-divider { border: none; border-top: 1px solid var(--w-border); margin: 10px 0; }
+  .w-error-msg { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; color: #c55; }
+
+  /* Skeleton shimmer */
+  .w-sk { background: var(--w-fill); border-radius: 4px; }
+
+  /* Dropdown */
+  .w-dropdown-wrap { position: relative; display: inline-block; }
+  .w-dropdown { position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid var(--w-border); border-radius: 6px; min-width: 140px; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: none; }
+  .w-dropdown.open { display: block; }
+  .w-dropdown-item { width: 100%; padding: 8px 14px; font-size: 13px; text-align: left; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .w-dropdown-item:hover { background: var(--w-fill); }
+  .w-dropdown-item:first-child { border-radius: 6px 6px 0 0; }
+  .w-dropdown-item:last-child { border-radius: 0 0 6px 6px; }
+</style>
+</head>
+<body class="p-0 m-0">
+
+<nav class="flex items-center gap-1 px-6 py-2">
+  <span class="text-xs mr-3" style="color:var(--w-muted)">wireframe</span>
+  <button id="nav-0" onclick="show(0)" class="px-2 py-1">초기 화면</button>
+  <button id="nav-1" onclick="show(1)" class="px-2 py-1">로딩 중</button>
+  <button id="nav-2" onclick="show(2)" class="px-2 py-1">변환 결과</button>
+  <button id="nav-3" onclick="show(3)" class="px-2 py-1">직접 입력</button>
+  <button id="nav-4" onclick="show(4)" class="px-2 py-1">에러 상태</button>
+  <div class="vp-toggle flex ml-auto">
+    <button id="vp-desktop" onclick="setViewport('desktop')" class="active">Desktop</button>
+    <button id="vp-mobile" onclick="setViewport('mobile')">Mobile</button>
+  </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════
+     Screen 0: 초기 화면
+     ══════════════════════════════════════════════════ -->
+<div id="screen-0" class="screen" data-scenario="scenario-1-initial">
+  <div class="screen-content max-w-3xl mx-auto p-8">
+
+    <h2 class="text-lg font-bold mb-6" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      초기 화면
+    </h2>
+
+    <!-- App title -->
+    <p class="font-bold mb-8" style="font-size:36px;">convert to md</p>
+
+    <!-- URL input row -->
+    <div class="flex gap-2 items-center">
+      <input class="w-input" type="text" placeholder="https://example.com/article..." readonly />
+      <button class="w-btn-primary" style="padding:13px 16px;">
+        <i data-lucide="arrow-right" style="width:20px;height:20px;stroke:white"></i>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="mt-20 flex flex-col items-center gap-3" style="color:var(--w-muted)">
+      <i data-lucide="link-2" style="width:40px;height:40px;stroke:var(--w-muted)"></i>
+      <span class="text-sm">URL을 입력하고 변환 버튼을 누르세요</span>
+    </div>
+
+    <div class="screen-notes">
+      <details open>
+        <summary>Notes</summary>
+        <ul>
+          <li>트리거: 최초 진입 또는 새로고침</li>
+          <li>인터랙션: URL 붙여넣기 → 변환 버튼 활성</li>
+          <li>전환: 변환 버튼 클릭 → 로딩 중 화면</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     Screen 1: 로딩 중
+     ══════════════════════════════════════════════════ -->
+<div id="screen-1" class="screen" data-scenario="scenario-1-loading">
+  <div class="screen-content max-w-3xl mx-auto p-8">
+
+    <h2 class="text-lg font-bold mb-6" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      로딩 중
+    </h2>
+
+    <p class="font-bold mb-8" style="font-size:36px;">convert to md</p>
+
+    <!-- URL input row (loading) -->
+    <div class="flex gap-2 items-center">
+      <input class="w-input" type="text" value="https://example.com/article-about-ai" readonly />
+      <button class="w-btn-icon" style="padding:13px 10px;">
+        <i data-lucide="x" style="width:18px;height:18px;stroke:var(--w-text)"></i>
+      </button>
+      <button class="w-btn-primary" style="opacity:0.65; padding:13px 16px;">
+        <i data-lucide="loader-circle" style="width:20px;height:20px;stroke:white"></i>
+      </button>
+    </div>
+
+    <!-- Skeleton card -->
+    <div class="mt-5 w-card p-5">
+      <div class="w-sk mb-3" style="height:14px; width:55%"></div>
+      <div class="w-sk mb-6" style="height:12px; width:30%"></div>
+      <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+      <div class="w-sk mb-2" style="height:15px; width:94%"></div>
+      <div class="w-sk mb-2" style="height:15px; width:87%"></div>
+      <div class="w-sk mb-5" style="height:15px; width:68%"></div>
+      <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+      <div class="w-sk mb-2" style="height:15px; width:91%"></div>
+      <div class="w-sk" style="height:15px; width:75%"></div>
+    </div>
+
+    <div class="screen-notes">
+      <details open>
+        <summary>Notes</summary>
+        <ul>
+          <li>트리거: 변환 버튼 클릭 직후</li>
+          <li>인터랙션: X 버튼으로 입력 취소 가능 (이전 결과 없으면 초기 화면, 있으면 결과 유지)</li>
+          <li>전환: 성공 → 변환 결과 화면 / 실패 → 에러 상태 화면</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     Screen 2: 변환 결과
+     ══════════════════════════════════════════════════ -->
+<div id="screen-2" class="screen" data-scenario="scenario-1,scenario-2,scenario-3,scenario-4,scenario-5,scenario-6,scenario-7">
+  <div class="screen-content max-w-3xl mx-auto p-8">
+
+    <h2 class="text-lg font-bold mb-6" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      변환 결과
+    </h2>
+
+    <p class="font-bold mb-8" style="font-size:36px;">convert to md</p>
+
+    <!-- URL input row -->
+    <div class="flex gap-2 items-center">
+      <input class="w-input" type="text" value="https://example.com/article-about-ai" readonly />
+      <button class="w-btn-icon" style="padding:13px 10px;">
+        <i data-lucide="x" style="width:18px;height:18px;stroke:var(--w-text)"></i>
+      </button>
+      <button class="w-btn-primary" style="padding:13px 16px;">
+        <i data-lucide="arrow-right" style="width:20px;height:20px;stroke:white"></i>
+      </button>
+    </div>
+
+    <!-- Result card -->
+    <div class="mt-5 w-card">
+
+      <!-- Toolbar -->
+      <div class="p-4" style="border-bottom:1px solid var(--w-border)">
+
+        <!-- Row 1: Pure export -->
+        <div class="flex gap-2 items-center mb-2">
+          <button class="w-btn">
+            <i data-lucide="copy" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+            복사하기
+          </button>
+          <button class="w-btn">
+            <i data-lucide="download" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+            .md 다운로드
+          </button>
+        </div>
+
+        <hr class="w-divider" />
+
+        <!-- Row 2: Prompt chips + LLM buttons -->
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs" style="color:var(--w-muted)">프롬프트</span>
+            <span class="w-chip selected">없음</span>
+            <span class="w-chip">요약해줘</span>
+            <span class="w-chip">한국어로 번역해줘</span>
+            <span class="w-chip">쉽게 설명해줘</span>
+            <span class="w-chip">직접 입력</span>
+          </div>
+          <div class="w-dropdown-wrap shrink-0">
+            <button class="w-btn" onclick="toggleDropdown(this)">
+              <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+              열기
+              <i data-lucide="chevron-down" style="width:12px;height:12px;stroke:var(--w-text)"></i>
+            </button>
+            <div class="w-dropdown">
+              <button class="w-dropdown-item">
+                <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+                ChatGPT로 열기
+              </button>
+              <button class="w-dropdown-item">
+                <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+                Claude로 열기
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Result content: title + author + markdown -->
+      <div class="p-5">
+        <p class="font-bold mb-1" style="font-size:22px;">The Future of Artificial Intelligence in Everyday Life</p>
+        <p class="mb-4" style="font-size:15px; color:var(--w-muted)">Jane Smith · 2024-03-15 · example.com</p>
+
+        <!-- Rendered markdown (mocked) -->
+        <div>
+          <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:96%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:89%"></div>
+          <div class="w-sk mb-4" style="height:15px; width:63%"></div>
+
+          <div class="w-sk mb-3" style="height:20px; width:42%"></div>
+
+          <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:93%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:88%"></div>
+          <div class="w-sk mb-4" style="height:15px; width:74%"></div>
+
+          <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:91%"></div>
+          <div class="w-sk" style="height:15px; width:55%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="screen-notes">
+      <details open>
+        <summary>Notes</summary>
+        <ul>
+          <li>트리거: 변환 완료 후</li>
+          <li>인터랙션: X 버튼 → URL 입력창만 비워짐, 결과 카드는 유지</li>
+          <li>인터랙션: "복사하기" 클릭 → 버튼 레이블 "복사됨!" 으로 잠시 변경 후 복귀 (순수 MD만 복사, 프롬프트 미포함)</li>
+          <li>인터랙션: ".md 다운로드" 클릭 → 순수 MD 파일 다운로드 (프롬프트 미포함)</li>
+          <li>인터랙션: 프롬프트 칩 선택 → 선택 상태 토글 (없음이 기본값)</li>
+          <li>인터랙션: "직접 입력" 칩 선택 → 직접 입력 화면으로 상태 변화</li>
+          <li>인터랙션: ChatGPT / Claude 클릭 → 새 탭 열림 (없음: MD만, 프리셋: 프롬프트+MD)</li>
+          <li>전환: 새 URL 입력 후 변환 → 로딩 중 화면, 완료 시 결과 교체</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     Screen 3: 직접 입력 프롬프트
+     ══════════════════════════════════════════════════ -->
+<div id="screen-3" class="screen" data-scenario="scenario-8">
+  <div class="screen-content max-w-3xl mx-auto p-8">
+
+    <h2 class="text-lg font-bold mb-6" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      직접 입력 프롬프트
+    </h2>
+
+    <p class="font-bold mb-8" style="font-size:36px;">convert to md</p>
+
+    <!-- URL input row -->
+    <div class="flex gap-2 items-center">
+      <input class="w-input" type="text" value="https://example.com/article-about-ai" readonly />
+      <button class="w-btn-icon" style="padding:13px 10px;">
+        <i data-lucide="x" style="width:18px;height:18px;stroke:var(--w-text)"></i>
+      </button>
+      <button class="w-btn-primary" style="padding:13px 16px;">
+        <i data-lucide="arrow-right" style="width:20px;height:20px;stroke:white"></i>
+      </button>
+    </div>
+
+    <!-- Result card -->
+    <div class="mt-5 w-card">
+
+      <!-- Toolbar -->
+      <div class="p-4" style="border-bottom:1px solid var(--w-border)">
+
+        <!-- Row 1: Pure export -->
+        <div class="flex gap-2 items-center mb-2">
+          <button class="w-btn">
+            <i data-lucide="copy" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+            복사하기
+          </button>
+          <button class="w-btn">
+            <i data-lucide="download" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+            .md 다운로드
+          </button>
+        </div>
+
+        <hr class="w-divider" />
+
+        <!-- Row 2: Prompt chips (직접 입력 selected) -->
+        <div class="flex items-center gap-2 flex-wrap mb-3">
+          <span class="text-xs" style="color:var(--w-muted)">프롬프트</span>
+          <span class="w-chip">없음</span>
+          <span class="w-chip">요약해줘</span>
+          <span class="w-chip">한국어로 번역해줘</span>
+          <span class="w-chip">쉽게 설명해줘</span>
+          <span class="w-chip selected">직접 입력</span>
+        </div>
+
+        <!-- Custom prompt input (visible when 직접 입력 selected) -->
+        <div class="mb-3">
+          <input class="w-input" type="text"
+            value="이 글의 핵심 논점을 세 가지로 정리해줘"
+            readonly
+            style="font-size:16px; padding:9px 14px;" />
+        </div>
+
+        <!-- Row 3: LLM export button (dropdown) -->
+        <div class="w-dropdown-wrap">
+          <button class="w-btn" onclick="toggleDropdown(this)">
+            <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+            열기
+            <i data-lucide="chevron-down" style="width:12px;height:12px;stroke:var(--w-text)"></i>
+          </button>
+          <div class="w-dropdown">
+            <button class="w-dropdown-item">
+              <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+              ChatGPT로 열기
+            </button>
+            <button class="w-dropdown-item">
+              <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+              Claude로 열기
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Result content -->
+      <div class="p-5">
+        <p class="font-bold mb-1" style="font-size:22px;">The Future of Artificial Intelligence in Everyday Life</p>
+        <p class="mb-4" style="font-size:15px; color:var(--w-muted)">Jane Smith · 2024-03-15 · example.com</p>
+        <div>
+          <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:96%"></div>
+          <div class="w-sk mb-4" style="height:15px; width:68%"></div>
+          <div class="w-sk mb-3" style="height:20px; width:42%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+          <div class="w-sk mb-2" style="height:15px; width:88%"></div>
+          <div class="w-sk" style="height:15px; width:72%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="screen-notes">
+      <details open>
+        <summary>Notes</summary>
+        <ul>
+          <li>트리거: 프롬프트 칩에서 "직접 입력" 선택 시</li>
+          <li>인터랙션: 텍스트 입력창에 1회용 커스텀 프롬프트 작성</li>
+          <li>인터랙션: ChatGPT / Claude 클릭 → "[커스텀 프롬프트]\n\n[MD 내용]" 형식으로 새 탭 열림</li>
+          <li>전환: 다음 변환 완료 후 직접 입력창 초기화 (1회용, 저장 안 됨)</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     Screen 4: 에러 상태
+     ══════════════════════════════════════════════════ -->
+<div id="screen-4" class="screen" data-scenario="scenario-9,scenario-10,scenario-11">
+  <div class="screen-content max-w-3xl mx-auto p-8">
+
+    <h2 class="text-lg font-bold mb-6" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      에러 상태
+    </h2>
+
+    <p class="font-bold mb-8" style="font-size:36px;">convert to md</p>
+
+    <!-- URL input row (error) -->
+    <div>
+      <div class="flex gap-2 items-center">
+        <input class="w-input error" type="text" value="not-a-valid-url" readonly />
+        <button class="w-btn-icon">
+          <i data-lucide="x" style="width:14px;height:14px;stroke:var(--w-text)"></i>
+        </button>
+        <button class="w-btn-primary" style="padding:8px 12px;">
+          <i data-lucide="arrow-right" style="width:16px;height:16px;stroke:white"></i>
+        </button>
+      </div>
+      <!-- Error message (below input) -->
+      <div class="w-error-msg">
+        <i data-lucide="circle-alert" style="width:13px;height:13px;stroke:#c55"></i>
+        유효하지 않은 URL입니다
+      </div>
+    </div>
+
+    <!-- Previous result preserved (dimmed) — scenario 9 case -->
+    <div class="mt-5 w-card" style="opacity:0.45; pointer-events:none;">
+      <div class="p-4" style="border-bottom:1px solid var(--w-border)">
+        <div class="flex gap-2 mb-2">
+          <button class="w-btn">복사하기</button>
+          <button class="w-btn">.md 다운로드</button>
+        </div>
+        <hr class="w-divider" />
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs" style="color:var(--w-muted)">프롬프트</span>
+          <span class="w-chip selected">없음</span>
+          <span class="w-chip">요약해줘</span>
+          <span class="w-chip">한국어로 번역해줘</span>
+          <span class="w-chip">쉽게 설명해줘</span>
+          <span class="w-chip">직접 입력</span>
+          <div class="w-dropdown-wrap ml-auto">
+            <button class="w-btn" onclick="toggleDropdown(this)">
+              <i data-lucide="external-link" style="width:13px;height:13px;stroke:var(--w-text)"></i>
+              열기
+              <i data-lucide="chevron-down" style="width:12px;height:12px;stroke:var(--w-text)"></i>
+            </button>
+            <div class="w-dropdown">
+              <button class="w-dropdown-item">ChatGPT로 열기</button>
+              <button class="w-dropdown-item">Claude로 열기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-5">
+        <p class="font-bold mb-1" style="font-size:22px;">The Future of Artificial Intelligence in Everyday Life</p>
+        <p class="mb-4" style="font-size:15px; color:var(--w-muted)">Jane Smith · 2024-03-15 · example.com</p>
+        <div class="w-sk mb-2" style="height:15px; width:100%"></div>
+        <div class="w-sk mb-2" style="height:15px; width:90%"></div>
+        <div class="w-sk" style="height:15px; width:65%"></div>
+      </div>
+    </div>
+
+    <div class="screen-notes">
+      <details open>
+        <summary>Notes</summary>
+        <p>에러 메시지는 원인에 따라 세 가지 (위치: URL 입력창 바로 아래)</p>
+        <ul>
+          <li><b>시나리오 9 — 유효하지 않은 URL</b>: "유효하지 않은 URL입니다" · 로딩 없이 즉시 표시</li>
+          <li><b>시나리오 10 — 접근 불가</b>: "페이지에 접근할 수 없습니다" · 로딩 후 표시</li>
+          <li><b>시나리오 11 — 본문 추출 실패</b>: "본문을 추출할 수 없습니다" · 로딩 후 표시</li>
+        </ul>
+        <ul>
+          <li>이전 변환 결과 있으면 그대로 유지 (반투명으로 표현)</li>
+          <li>인터랙션: X 버튼 → URL 입력창 초기화, 에러 메시지 사라짐</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+
+<script>
+var screenIds = [];
+
+function toggleDropdown(btn) {
+  var dropdown = btn.nextElementSibling;
+  var isOpen = dropdown.classList.contains('open');
+  document.querySelectorAll('.w-dropdown.open').forEach(function(d) { d.classList.remove('open'); });
+  if (!isOpen) dropdown.classList.add('open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.w-dropdown-wrap')) {
+    document.querySelectorAll('.w-dropdown.open').forEach(function(d) { d.classList.remove('open'); });
+  }
+});
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('nav button[id^="nav-"]').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('nav-' + id).classList.add('active');
+}
+
+function setViewport(mode) {
+  document.body.classList.remove('viewport-mobile', 'viewport-desktop');
+  document.body.classList.add('viewport-' + mode);
+  document.querySelectorAll('.vp-toggle button').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('vp-' + mode).classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('nav button[id^="nav-"]').forEach(function(b) {
+    screenIds.push(parseInt(b.id.replace('nav-', '')));
+  });
+  var first = document.querySelector('nav button[id^="nav-"]');
+  if (first) first.click();
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>
